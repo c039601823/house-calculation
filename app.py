@@ -13,24 +13,22 @@ EXCEL_FILENAME = '價格表.xlsx'
 excel_path = os.path.join(DATA_FOLDER, EXCEL_FILENAME)
 
 # ==========================================
-# 1. 智慧排序讀取：自動處理樓層與車位順序
+# 1. 智慧排序讀取
 # ==========================================
 @st.cache_data
 def load_data(path):
     excel_file = pd.ExcelFile(path)
     sheet_names = excel_file.sheet_names
     
-    house_df = pd.read_excel(path, sheet_name=sheet_names[0])
-    parking_df = pd.read_excel(path, sheet_name=sheet_names[1]) if len(sheet_names) > 1 else house_df
+    house_df = pd.read_excel(path, sheet_name=sheet_names)
+    parking_df = pd.read_excel(path, sheet_name=sheet_names) if len(sheet_names) > 1 else house_df
     
-    # 建立房屋 Python 字典
     h_dict = {}
     for _, row in house_df.iterrows():
         f, u, p = str(row['樓層']).strip(), str(row['戶型']).strip(), int(row['總價(元)'])
         if f not in h_dict: h_dict[f] = {}
         h_dict[f][u] = p
         
-    # 建立車位 Python 字典
     p_dict = {}
     for _, row in parking_df.iterrows():
         l, pid, p = str(row['地下樓層']).strip(), str(row['車位號碼']).strip(), int(row['總價(元)'])
@@ -52,13 +50,26 @@ PERSONAL_VALUE = 29393269
 RATIO = 0.95
 
 # ==========================================
-# 2. 定義自訂美化 CSS 樣式
+# 2. 定義自訂美化 CSS 樣式 (強力清除殘留空白)
 # ==========================================
 st.markdown("""
     <style>
-        /* 徹底移除 Streamlit 頂部的空白與不必要的文字殘留 */
-        .block-container { padding-top: 1.5rem !important; }
-        [data-testid="stMarkdownContainer"] h3 { margin-bottom: 0px !important; }
+        /* 強制拔除所有 Streamlit 頂部多餘的空白區塊與舊組件外框 */
+        .block-container { padding-top: 1.5rem !important; padding-bottom: 1rem !important; }
+        [data-testid="stHeader"] { display: none !important; }
+        
+        /* 修正右側標題字體被剪裁的問題，給予適當頂部空間與字高 */
+        .right-title {
+            font-family: "Microsoft JhengHei", sans-serif;
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a1a1a;
+            padding-top: 8px !important;
+            padding-bottom: 5px !important;
+            line-height: 1.5 !important;
+            display: flex;
+            align-items: center;
+        }
         
         /* 卡片精美外框樣式 */
         .custom-card {
@@ -76,22 +87,21 @@ st.markdown("""
 
 # 樓層與車位智慧排序函式
 def sort_floors(floor_list):
-    # 拔掉 F 轉成數字排序，例如 "13F" -> 13
     return sorted(floor_list, key=lambda x: int(x.upper().replace('F','')) if x.upper().replace('F','').isdigit() else 99)
 
 def sort_parking_levels(level_list):
-    # 拔掉 B 轉成數字排序，例如 "B2" -> 2
     return sorted(level_list, key=lambda x: int(x.upper().replace('B','')) if x.upper().replace('B','').isdigit() else 99)
 
+# 左右配置排版
 col1, col2 = st.columns([1, 1.2])
 
-# --- 左側：高質感對照計算機 ---
+# --- 左側：高質感對照計算機 (直接貼齊最頂端) ---
 with col1:
     with st.container():
         st.markdown('<div class="custom-card">', unsafe_allow_html=True)
         st.markdown("<h2 style='text-align:center; color:#222; margin-top:0; font-size:22px; font-weight:bold;'>選屋找補計算機</h2>", unsafe_allow_html=True)
         
-        # --- 房屋下拉選單（套用智慧數字排序） ---
+        # --- 房屋下拉選單 ---
         st.markdown("<span style='color:#444; font-weight:bold; font-size:15px;'>選擇樓層：</span>", unsafe_allow_html=True)
         floors = sort_floors(list(house_dict.keys())) if has_data else []
         sel_floor = st.selectbox("floor_sel", floors if floors else ["無資料"], label_visibility="collapsed", key="f_sel")
@@ -103,7 +113,7 @@ with col1:
         h_price = house_dict[sel_floor][sel_unit] if sel_floor in house_dict and sel_unit in house_dict[sel_floor] else 0
         st.markdown(f'<div class="sub-price">房屋單價：<span class="price-val">{h_price:,}</span> 元</div>', unsafe_allow_html=True)
         
-        # --- 車位下拉選單（套用智慧數字排序） ---
+        # --- 車位下拉選單 ---
         st.markdown("<span style='color:#444; font-weight:bold; font-size:15px;'>選擇車位樓層：</span>", unsafe_allow_html=True)
         p_floors = sort_parking_levels(list(parking_dict.keys())) if has_data else []
         sel_p_floor = st.selectbox("p_floor_sel", p_floors if p_floors else ["無資料"], label_visibility="collapsed", key="p_f_sel")
@@ -133,9 +143,10 @@ with col1:
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 右側：自動圖面對照欄 ---
+# --- 右側：自動圖面對照欄 (已修復字體裁減) ---
 with col2:
-    st.markdown("### 🗺️ 樓層與車位圖面參考")
+    # 使用自訂的 CSS 類別，確保字體絕不被截斷
+    st.markdown('<div class="right-title">📖 樓層與車位圖面參考</div>', unsafe_allow_html=True)
     
     # 1. 房屋圖面自動檢索
     st.markdown(f"#### 🏠 房屋：{sel_floor} 平面圖")
