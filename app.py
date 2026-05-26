@@ -26,7 +26,7 @@ PERSONAL_VALUE = 29393269
 RATIO = 0.95
 
 # ==========================================
-# 🛠️ 終極解法：挪移標題至頂部白條區，完美利用空間
+# 🛠️ 終極解法：強制將原生干擾白框變透明並隱藏
 # ==========================================
 st.markdown("""
     <style>
@@ -34,7 +34,15 @@ st.markdown("""
         [data-testid="stHeader"] { display: none !important; }
         .block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
         
-        /* 2. 徹底美化原本空白條的標題字體與行高 */
+        /* 2. 🎯 核心修正：將所有原生干擾的白框條背景改為「完全透明」，並移除陰影與邊框 */
+        [data-testid="stHeaderBlock"], 
+        div[data-testid="stBlock"] {
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        
+        /* 3. 徹底美化自訂大標題字體與底部分隔線 */
         .title-left {
             font-family: "Microsoft JhengHei", sans-serif;
             font-size: 24px; 
@@ -47,7 +55,6 @@ st.markdown("""
             margin-bottom: 20px !important;
         }
         
-        /* 3. 右邊的「圖面參考」標題保持對齊 */
         .title-right {
             font-family: "Microsoft JhengHei", sans-serif;
             font-size: 24px; 
@@ -60,7 +67,7 @@ st.markdown("""
             margin-bottom: 20px !important;
         }
         
-        /* 4. 客製化精美計算機卡片外框（移除了內部的標題） */
+        /* 4. 客製化精美計算機卡片外框 */
         .custom-card {
             font-family: "Microsoft JhengHei", sans-serif;
             padding: 24px;
@@ -87,7 +94,6 @@ col1, col2 = st.columns([1, 1.2])
 
 # --- 左側：大挪移頂部計算機 ---
 with col1:
-    # 💡 成功將「選屋找補計算機」移到了那個本來會留白的框框區！
     st.markdown('<div class="title-left">🏡 選屋找補計算機</div>', unsafe_allow_html=True)
     
     with st.container():
