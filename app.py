@@ -7,10 +7,10 @@ import os
 st.set_page_config(page_title="選屋找補對照系統", page_icon="🏡", layout="wide")
 
 # ==========================================
-# 🔒 安全隱私設定區：請在這裡修改成您在 data 資料夾裡的新檔名
+# 🔒 安全隱私設定區：鎖定 data 資料夾與新檔名
 # ==========================================
 DATA_FOLDER = 'data'
-EXCEL_FILENAME = '您的新檔案名稱.xlsx'  # 👈 這裡請改成您重新命名的 Excel 檔名（包含 .xlsx）
+EXCEL_FILENAME = '價格表.xlsx'  # 已設定為您最新的檔案名稱
 excel_path = os.path.join(DATA_FOLDER, EXCEL_FILENAME)
 
 # ==========================================
@@ -22,11 +22,11 @@ def load_data(path):
     
     # 自動動態尋找工作表（Sheet）名稱，避免因改名導致程式報錯
     sheet_names = list(excel_data.keys())
-    house_sheet = [s for s in sheet_names if '屋' in s or '房' in s][0] if sheet_names else None
-    parking_sheet = [s for s in sheet_names if '車' in s][0] if sheet_names else None
+    house_sheet = [s for s in sheet_names if '屋' in s or '房' in s] if sheet_names else None
+    parking_sheet = [s for s in sheet_names if '車' in s] if sheet_names else None
     
     # 處理房屋資料
-    house_df = excel_data[house_sheet] if house_sheet else excel_data[sheet_names[0]]
+    house_df = excel_data[house_sheet[0]] if house_sheet else excel_data[sheet_names[0]]
     house_data_dict = {}
     for _, row in house_df.iterrows():
         floor = str(row['樓層'])
@@ -37,7 +37,7 @@ def load_data(path):
         house_data_dict[floor][unit] = price
 
     # 處理車位資料
-    parking_df = excel_data[parking_sheet] if parking_sheet else excel_data[sheet_names[1]]
+    parking_df = excel_data[parking_sheet[0]] if parking_sheet else excel_data[sheet_names[1]]
     parking_data_dict = {}
     for _, row in parking_df.iterrows():
         level = str(row['地下樓層'])
@@ -52,18 +52,18 @@ def load_data(path):
 try:
     house_dict, parking_dict, house_json, parking_json = load_data(excel_path)
 except Exception as e:
-    st.error(f"安全性讀取失敗！請確保已在 data 資料夾中放入對應的 Excel 檔案。")
+    st.error(f"安全性讀取失敗！請確保已在 data 資料夾中放入正確的 Excel 檔案。")
     house_dict, parking_dict, house_json, parking_json = {}, {}, "{}", "{}"
 
 # ==========================================
 # 2. 定義左右雙欄排版
 # ==========================================
-col1, col2 = st.columns([1, 1.2]) # 左邊放計算機與下載區，右邊放平面圖
+col1, col2 = st.columns([1, 1.2]) # 左邊放計算機，右邊放平面圖
 
 with col1:
     st.markdown("### 📊 數據試算欄")
     
-    # 用於驅動右側圖面檢索的隱藏狀態選單
+    # 用於驅動右側圖面檢索的狀態選單
     floors = sorted(list(house_dict.keys()))
     selected_floor = st.selectbox("請勾選欲對照的房屋樓層：", floors if floors else ["無資料"])
     
@@ -164,20 +164,6 @@ with col1:
     </html>
     '''
     st.components.v1.html(html_content, height=640, scrolling=False)
-
-    # 📥 安全下載區
-    st.markdown("---")
-    st.markdown("### 📥 原始底價表下載")
-    if os.path.exists(excel_path):
-        with open(excel_path, "rb") as file:
-            st.download_button(
-                label="📁 點我下載專案數據底價表",
-                data=file,
-                file_name="project_base_price.xlsx",  # 👈 這裡很關鍵！這是使用者點了按鈕後「下載到他電腦時顯示的防禦性偽裝檔名」
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-    else:
-        st.warning("暫時無法提供檔案下載，請確認資料夾與檔名設定。")
 
 # ==========================================
 # 3. 右側動態圖面檢索區（指向 maps/ 資料夾）
