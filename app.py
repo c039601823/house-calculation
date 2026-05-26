@@ -163,7 +163,7 @@ with col1:
     </body>
     </html>
     '''
-    st.components.v1.html(html_content, height=640, scrolling=False)
+    st.components.v1.html(html_content, height=750, scrolling=False)
 
 # ==========================================
 # 3. 右側動態圖面檢索區（指向 maps/ 資料夾）
