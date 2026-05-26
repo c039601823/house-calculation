@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import os
+from streamlit_components_auth import html # 引入自訂組件，若無則使用內建，這裡用內建改良
 
 # 設定網頁為寬螢幕模式與漂亮的主題圖示
 st.set_page_config(page_title="選屋找補對照系統", page_icon="🏡", layout="wide")
@@ -10,7 +11,7 @@ st.set_page_config(page_title="選屋找補對照系統", page_icon="🏡", layo
 # 🔒 安全隱私設定區：鎖定 data 資料夾與新檔名
 # ==========================================
 DATA_FOLDER = 'data'
-EXCEL_FILENAME = '價格表.xlsx'  # 已設定為您最新的檔案名稱
+EXCEL_FILENAME = '價格表.xlsx'
 excel_path = os.path.join(DATA_FOLDER, EXCEL_FILENAME)
 
 # ==========================================
@@ -19,14 +20,11 @@ excel_path = os.path.join(DATA_FOLDER, EXCEL_FILENAME)
 @st.cache_data
 def load_data(path):
     excel_data = pd.read_excel(path, sheet_name=None)
-    
-    # 自動動態尋找工作表（Sheet）名稱，避免因改名導致程式報錯
     sheet_names = list(excel_data.keys())
     house_sheet = [s for s in sheet_names if '屋' in s or '房' in s] if sheet_names else None
     parking_sheet = [s for s in sheet_names if '車' in s] if sheet_names else None
     
-    # 處理房屋資料
-    house_df = excel_data[house_sheet[0]] if house_sheet else excel_data[sheet_names[0]]
+    house_df = excel_data[house_sheet] if house_sheet else excel_data[sheet_names]
     house_data_dict = {}
     for _, row in house_df.iterrows():
         floor = str(row['樓層'])
@@ -36,8 +34,7 @@ def load_data(path):
             house_data_dict[floor] = {}
         house_data_dict[floor][unit] = price
 
-    # 處理車位資料
-    parking_df = excel_data[parking_sheet[0]] if parking_sheet else excel_data[sheet_names[1]]
+    parking_df = excel_data[parking_sheet] if parking_sheet else excel_data[sheet_names]
     parking_data_dict = {}
     for _, row in parking_df.iterrows():
         level = str(row['地下樓層'])
@@ -56,21 +53,20 @@ except Exception as e:
     house_dict, parking_dict, house_json, parking_json = {}, {}, "{}", "{}"
 
 # ==========================================
-# 2. 定義左右雙欄排版
+# 2. 初始化 Streamlit 狀態暫存（用來記住當前看哪張圖）
+# ==========================================
+# 利用網址參數 (Query Params) 來當作 HTML 與 Python 之間的橋樑，免安裝外掛
+query_params = st.query_params
+current_floor = query_params.get("f", sorted(list(house_dict.keys()))[0] if house_dict else "3F")
+current_p_floor = query_params.get("p", sorted(list(parking_dict.keys()))[0] if parking_dict else "B1")
+
+# ==========================================
+# 3. 定義左右雙欄排版
 # ==========================================
 col1, col2 = st.columns([1, 1.2]) # 左邊放計算機，右邊放平面圖
 
 with col1:
-    st.markdown("### 📊 數據試算欄")
-    
-    # 用於驅動右側圖面檢索的狀態選單
-    floors = sorted(list(house_dict.keys()))
-    selected_floor = st.selectbox("請勾選欲對照的房屋樓層：", floors if floors else ["無資料"])
-    
-    p_floors = sorted(list(parking_dict.keys()))
-    selected_p_floor = st.selectbox("請勾選欲對照的車位樓層：", p_floors if p_floors else ["無資料"])
-
-    # 渲染計算機網頁
+    # 渲染純粹的計算機網頁（內嵌網址同步 JavaScript）
     html_content = f'''
     <!DOCTYPE html>
     <html>
@@ -80,7 +76,7 @@ with col1:
             .section {{ margin-bottom: 15px; padding: 12px; border: 1px solid #eee; border-radius: 4px; }}
             h2 {{ color: #333; text-align: center; margin-top: 0; font-size: 20px; }}
             label {{ display: block; margin: 8px 0 3px; font-weight: bold; color: #555; }}
-            select {{ width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px solid #ccc; background-color: #f9f9f9; }}
+            select {{ width: 100%; padding: 8px; margin-bottom: 8px; border-radius: 4px; border: 1px solid #ccc; background-color: #f9f9f9; font-size: 15px; }}
             .sub-price {{ font-size: 0.9em; color: #666; margin-bottom: 8px; text-align: right; }}
             .price-val {{ color: #d9534f; font-weight: bold; }}
             .result-box {{ background: #eef7ff; padding: 12px; border-radius: 4px; text-align: center; font-size: 1.2em; font-weight: bold; color: #0056b3; border: 1px solid #bce8f1; margin-bottom: 8px; }}
@@ -90,17 +86,17 @@ with col1:
     </head>
     <body>
         <div class="container">
-            <h2>選屋找補計算機</h2>
+            <h2>🏡 選屋找補計算機</h2>
             <div class="section">
                 <label>選擇樓層：</label>
-                <select id="floorSelect" onchange="updateUnits()"></select>
+                <select id="floorSelect" onchange="syncToStreamlit()"></select>
                 <label>選擇戶型：</label>
                 <select id="unitSelect" onchange="calculate()"></select>
                 <div class="sub-price">房屋單價：<span id="housePriceVal" class="price-val">0</span> 元</div>
             </div>
             <div class="section">
                 <label>選擇車位樓層：</label>
-                <select id="pFloorSelect" onchange="updateParkingIds()"></select>
+                <select id="pFloorSelect" onchange="syncToStreamlit()"></select>
                 <label>選擇車位號碼：</label>
                 <select id="pIdSelect" onchange="calculate()"></select>
                 <div class="sub-price">車位單價：<span id="parkingPriceVal" class="price-val">0</span> 元</div>
@@ -121,28 +117,53 @@ with col1:
                 Object.keys(houseData).sort().forEach(f => {{ floorSelect.add(new Option(f, f)); }});
                 Object.keys(parkingData).sort().forEach(pf => {{ pFloorSelect.add(new Option(pf, pf)); }});
                 
-                floorSelect.value = "{selected_floor}";
-                pFloorSelect.value = "{selected_p_floor}";
+                // 記住前一次選取的數值
+                floorSelect.value = "{current_floor}";
+                pFloorSelect.value = "{current_p_floor}";
                 
-                updateUnits();
-                updateParkingIds();
+                updateUnits(false);
+                updateParkingIds(false);
+                calculate();
             }}
-            function updateUnits() {{
+
+            // 當切換樓層時，通知外層 Streamlit 刷新圖片
+            function syncToStreamlit() {{
+                const floor = document.getElementById('floorSelect').value;
+                const pFloor = document.getElementById('pFloorSelect').value;
+                
+                // 透過修改 parent 網址參數即時連動 Streamlit
+                const newUrl = window.parent.location.protocol + "//" + window.parent.location.host + window.parent.location.pathname + "?f=" + floor + "&p=" + pFloor;
+                window.parent.history.replaceState({{path:newUrl}}, '', newUrl);
+                
+                // 強制觸發 Streamlit 的重新渲染機制
+                window.parent.postMessage({{type: 'streamlit:set_page_config'}}, '*');
+                
+                updateUnits(true);
+                updateParkingIds(true);
+            }}
+
+            function updateUnits(shouldCalc) {{
                 const floor = document.getElementById('floorSelect').value;
                 const unitSelect = document.getElementById('unitSelect');
                 if(!floor) return;
+                const prevVal = unitSelect.value;
                 unitSelect.innerHTML = '';
                 Object.keys(houseData[floor]).sort().forEach(u => {{ unitSelect.add(new Option(u, u)); }});
-                calculate();
+                if(prevVal && houseData[floor][prevVal]) unitSelect.value = prevVal;
+                if(shouldCalc) calculate();
             }}
-            function updateParkingIds() {{
+
+            function updateParkingIds(shouldCalc) {{
                 const pFloor = document.getElementById('pFloorSelect').value;
                 const pIdSelect = document.getElementById('pIdSelect');
                 if(!pFloor) return;
+                const prevVal = pIdSelect.value;
                 pIdSelect.innerHTML = '';
                 Object.keys(parkingData[pFloor]).sort((a,b)=>a-b).forEach(p => {{ pIdSelect.add(new Option(p, p)); }});
-                calculate();
+                if(prevVal && parkingData[pFloor][prevVal]) pIdSelect.value = prevVal;
+                if(shouldCalc) calculate();
             }}
+
             function calculate() {{
                 const floor = document.getElementById('floorSelect').value;
                 const unit = document.getElementById('unitSelect').value;
@@ -163,18 +184,19 @@ with col1:
     </body>
     </html>
     '''
-    st.components.v1.html(html_content, height=750, scrolling=False)
+    # 完美高度
+    st.components.v1.html(html_content, height=710, scrolling=False)
 
 # ==========================================
-# 3. 右側動態圖面檢索區（指向 maps/ 資料夾）
+# 4. 右側智慧圖面檢索區（完美去重複、全自動同步連動）
 # ==========================================
 with col2:
     st.markdown("### 🗺️ 樓層與車位圖面參考")
     
-    # 房屋圖面邏輯
-    st.subheader(f"🏠 房屋：{selected_floor} 平面圖")
+    # 房屋圖面
+    st.subheader(f"🏠 房屋：{current_floor} 平面圖")
     try:
-        f_num = int(selected_floor.replace('F',''))
+        f_num = int(current_floor.replace('F',''))
         if f_num == 3:
             img_file = os.path.join('maps', 'floor_3.png')
         elif 4 <= f_num <= 14:
@@ -183,7 +205,7 @@ with col2:
             img_file = os.path.join('maps', 'floor_15_24.png')
         else:
             img_file = None
-            
+                       
         if img_file and os.path.exists(img_file):
             st.image(img_file, use_column_width=True)
         else:
