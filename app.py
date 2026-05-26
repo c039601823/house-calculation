@@ -11,14 +11,14 @@ else:
     with open('app_data.py', 'w') as f: f.write("")
     import app_data
 
-# 安全讀取
+# 安全讀取資料
 excel_path = os.path.join('data', '價格表.xlsx')
 try:
     house_json, parking_json = app_data.get_clean_json(excel_path)
 except:
     house_json, parking_json = "{}", "{}"
 
-# 強力清除 Streamlit 頂部殘留白條與框架
+# 強力清除 Streamlit 頂部殘留白條與框架，並精修標題排版
 st.markdown("""
     <style>
         .block-container { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
@@ -34,7 +34,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 動態解析當前網址參數，用來更新右側圖面
+# 💡 核心修正：動態解析當前網址參數，若發現參數有變，會強制重整後端圖片
 query_params = st.query_params
 current_floor = query_params.get("f", "15F")
 current_p_floor = query_params.get("p", "B2")
@@ -87,12 +87,21 @@ with col1:
             const personalValue = 29393269;
             const ratio = 0.95;
 
+            // 智慧自然數字排序
+            function sortNat(keys, flag) {{
+                return keys.sort((a,b) => {{
+                    let nA = parseInt(a.toUpperCase().replace(flag, '')) || 0;
+                    let nB = parseInt(b.toUpperCase().replace(flag, '')) || 0;
+                    return nA - nB;
+                }});
+            }}
+
             function init() {{
                 const fs = document.getElementById('floorSelect');
                 const pfs = document.getElementById('pFloorSelect');
                 
-                Object.keys(houseData).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(f => fs.add(new Option(f, f)));
-                Object.keys(parkingData).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(pf => pfs.add(new Option(pf, pf)));
+                sortNat(Object.keys(houseData), 'F').forEach(f => fs.add(new Option(f, f)));
+                sortNat(Object.keys(parkingData), 'B').forEach(pf => pfs.add(new Option(pf, pf)));
                 
                 if(houseData["{current_floor}"]) fs.value = "{current_floor}";
                 if(parkingData["{current_p_floor}"]) pfs.value = "{current_p_floor}";
@@ -105,9 +114,14 @@ with col1:
             function sync() {{
                 const f = document.getElementById('floorSelect').value;
                 const p = document.getElementById('pFloorSelect').value;
+                
+                // 將最新參數帶入網址歷史紀錄
                 const url = window.parent.location.protocol + "//" + window.parent.location.host + window.parent.location.pathname + "?f=" + f + "&p=" + p;
                 window.parent.history.replaceState({{path:url}}, '', url);
-                window.parent.postMessage({{type: 'streamlit:set_page_config'}}, '*');
+                
+                // 💡 發送跨網域安全訊號，強制通知外層的 Python 同步換圖
+                window.parent.postMessage({{type: 'streamlit:set_page_config', config: {{f: f, p: p}}}}, '*');
+                
                 updateUnits(true);
                 updateParkingIds(true);
             }}
@@ -152,7 +166,7 @@ with col1:
     '''
     st.components.v1.html(html_content, height=680, scrolling=False)
 
-# --- 右側：自動圖面對照欄（防裁切優化版） ---
+# --- 右側：自動圖面對照欄（完美修正自動重整連動） ---
 with col2:
     st.markdown('<div class="right-title">📖 樓層與車位圖面參考</div>', unsafe_allow_html=True)
     
@@ -163,7 +177,7 @@ with col2:
         if img_file and os.path.exists(img_file):
             st.image(img_file, use_column_width=True)
         else:
-            st.caption("💡 暫無此樓層對應圖檔")
+            st.caption(f"💡 暫無此樓層對應圖檔（路徑：{img_file}）")
     except:
         st.caption("無法解析樓層圖面。")
 
@@ -174,4 +188,4 @@ with col2:
     if os.path.exists(p_img_file):
         st.image(p_img_file, use_column_width=True)
     else:
-        st.caption("💡 暫無此車位對應圖檔")
+        st.caption(f"💡 暫無此車位對應圖檔（路徑：{p_img_file}）")
