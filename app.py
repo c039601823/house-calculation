@@ -26,48 +26,26 @@ PERSONAL_VALUE = 29393269
 RATIO = 0.95
 
 # ==========================================
-# 🛠️ 終極解法：強制將原生干擾白框變透明並隱藏
+# 🔍 核心美化：加入滑鼠懸停圖片放大鏡效果與排版
 # ==========================================
 st.markdown("""
     <style>
-        /* 1. 清除頂部黑條，調整最舒適的上方留白間距 */
+        /* 1. 清除頂部黑條與內建空白 */
         [data-testid="stHeader"] { display: none !important; }
         .block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
         
-        /* 2. 🎯 核心修正：將所有原生干擾的白框條背景改為「完全透明」，並移除陰影與邊框 */
-        [data-testid="stHeaderBlock"], 
-        div[data-testid="stBlock"] {
-            background-color: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-        
-        /* 3. 徹底美化自訂大標題字體與底部分隔線 */
-        .title-left {
+        /* 2. 標題字體美化 */
+        .title-left, .title-right {
             font-family: "Microsoft JhengHei", sans-serif;
             font-size: 24px; 
             font-weight: bold; 
             color: #1a1a1a;
-            padding-top: 0px !important;
             padding-bottom: 12px !important;
-            line-height: 1.6 !important;
             border-bottom: 2px solid #eaeaea;
             margin-bottom: 20px !important;
         }
         
-        .title-right {
-            font-family: "Microsoft JhengHei", sans-serif;
-            font-size: 24px; 
-            font-weight: bold; 
-            color: #1a1a1a;
-            padding-top: 0px !important;
-            padding-bottom: 12px !important;
-            line-height: 1.6 !important;
-            border-bottom: 2px solid #eaeaea;
-            margin-bottom: 20px !important;
-        }
-        
-        /* 4. 客製化精美計算機卡片外框 */
+        /* 3. 客製化計算機卡片外框 */
         .custom-card {
             font-family: "Microsoft JhengHei", sans-serif;
             padding: 24px;
@@ -79,6 +57,26 @@ st.markdown("""
         }
         .sub-price { font-size: 0.92em; color: #666; text-align: right; margin-top: -8px; margin-bottom: 18px; }
         .price-val { color: #d9534f; font-weight: bold; font-size: 1.05em; }
+        
+        /* 4. 🎯 放大鏡核心效果：限制圖片容器，超出範圍就隱藏，避免放大時擠壓到旁邊排版 */
+        [data-testid="stImage"] {
+            overflow: hidden !important;
+            border-radius: 8px;
+            border: 1px solid #eaeaea;
+            transition: border-color 0.3s;
+        }
+        [data-testid="stImage"]:hover {
+            border-color: #0056b3; /* 滑鼠移過去時外框變藍色 */
+        }
+        
+        /* 5. 🎯 放大鏡動畫：當滑鼠移到圖片上時，平滑放大 1.6 倍 (可自由調整數值) */
+        [data-testid="stImage"] img {
+            transition: transform 0.4s ease !important;
+            cursor: zoom-in !important; /* 讓滑鼠游標變成放大鏡的形狀 */
+        }
+        [data-testid="stImage"] img:hover {
+            transform: scale(1.6) !important; /* 1.6 代表放大 160%，可以改為 1.8 或 2.0 */
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -92,7 +90,7 @@ def sort_parking_levels(level_list):
 # 進行左右雙欄配置
 col1, col2 = st.columns([1, 1.2])
 
-# --- 左側：大挪移頂部計算機 ---
+# --- 左側：計算機 ---
 with col1:
     st.markdown('<div class="title-left">🏡 選屋找補計算機</div>', unsafe_allow_html=True)
     
@@ -141,7 +139,7 @@ with col1:
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 右側：自動圖面對照欄 ---
+# --- 右側：自動圖面對照欄 (內含滑鼠懸停放大鏡) ---
 with col2:
     st.markdown('<div class="title-right">🗺️ 樓層與車位圖面參考</div>', unsafe_allow_html=True)
     
