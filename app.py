@@ -25,13 +25,34 @@ except Exception as e:
 PERSONAL_VALUE = 29393269
 RATIO = 0.95
 
-# 強力清洗頂部多餘間距與客製化美化外框
+# ==========================================
+# 🛠️ 終極解法：用 CSS 強行隱藏頂部標題、白條與縮小間距
+# ==========================================
 st.markdown("""
     <style>
-        .block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+        /* 1. 徹底消滅 Streamlit 頂部黑條與所有內建空白 */
         [data-testid="stHeader"] { display: none !important; }
+        .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
         
-        /* 客製化精美卡片外框 */
+        /* 2. 強行隱藏自動冒出來的「數據試算欄」文字標題 */
+        [data-testid="stHeaderBlock"] h3, 
+        [data-testid="stMarkdownContainer"] h3 { 
+            display: none !important; 
+        }
+        
+        /* 3. 唯獨讓右邊的「圖面參考」標題顯示（覆蓋上面的隱藏設定） */
+        .show-title {
+            display: block !important;
+            font-family: "Microsoft JhengHei", sans-serif;
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #1a1a1a;
+            padding-bottom: 12px !important;
+            border-bottom: 2px solid #eaeaea;
+            margin-bottom: 20px !important;
+        }
+        
+        /* 4. 客製化精美計算機卡片外框 */
         .custom-card {
             font-family: "Microsoft JhengHei", sans-serif;
             padding: 24px;
@@ -39,13 +60,14 @@ st.markdown("""
             border-radius: 12px;
             background: #ffffff;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            margin-top: 5px;
         }
         .sub-price { font-size: 0.92em; color: #666; text-align: right; margin-top: -8px; margin-bottom: 18px; }
         .price-val { color: #d9534f; font-weight: bold; font-size: 1.05em; }
     </style>
 """, unsafe_allow_html=True)
 
-# 智慧排序函式：確保下拉選單按照 3F, 4F... 順序排列
+# 智慧排序函式
 def sort_floors(floor_list):
     return sorted(floor_list, key=lambda x: int(x.upper().replace('F','')) if x.upper().replace('F','').isdigit() else 99)
 
@@ -55,9 +77,10 @@ def sort_parking_levels(level_list):
 # 進行左右雙欄配置
 col1, col2 = st.columns([1, 1.2])
 
-# --- 左側：高質感原生看屋計算機 ---
+# --- 左側：高質感原生看屋計算機（標題已被完全隱藏，直接貼頂） ---
 with col1:
-    st.markdown("### 📊 數據試算欄")
+    # 這裡的 st.markdown 標題會被上面的 CSS 直接蒸發隱藏，確保版面不留白
+    st.markdown("### 數據試算欄") 
     
     with st.container():
         st.markdown('<div class="custom-card">', unsafe_allow_html=True)
@@ -105,9 +128,10 @@ with col1:
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 右側：自動圖面對照欄（100% 保證同步連動） ---
+# --- 右側：自動圖面對照欄（使用特定 CSS 類別強制顯示） ---
 with col2:
-    st.markdown("### 🗺️ 樓層與車位圖面參考")
+    # 這裡使用 class="show-title" 繞過隱藏規則，確保它能漂亮現身
+    st.markdown('<div class="show-title">🗺️ 樓層與車位圖面參考</div>', unsafe_allow_html=True)
     
     # 1. 房屋圖面自動檢索
     st.markdown(f"#### 🏠 房屋：{sel_floor} 平面圖")
@@ -125,7 +149,7 @@ with col2:
         if img_file and os.path.exists(img_file):
             st.image(img_file, use_column_width=True)
         else:
-            st.caption(f"💡 暫無此樓層圖檔（預期路徑：{img_file}）")
+            st.caption(f"💡 暫無此樓層圖檔")
     except:
         st.caption("暫時無法解析樓層。")
 
@@ -138,4 +162,4 @@ with col2:
     if os.path.exists(p_img_file):
         st.image(p_img_file, use_column_width=True)
     else:
-        st.caption(f"💡 暫無此車位圖檔（預期路徑：{p_img_file}）")
+        st.caption(f"💡 暫無此車位圖檔")
