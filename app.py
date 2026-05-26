@@ -26,33 +26,41 @@ PERSONAL_VALUE = 29393269
 RATIO = 0.95
 
 # ==========================================
-# 🛠️ 終極解法：用 CSS 強行隱藏頂部標題、白條與縮小間距
+# 🛠️ 終極解法：挪移標題至頂部白條區，完美利用空間
 # ==========================================
 st.markdown("""
     <style>
-        /* 1. 徹底消滅 Streamlit 頂部黑條與所有內建空白 */
+        /* 1. 清除頂部黑條，調整最舒適的上方留白間距 */
         [data-testid="stHeader"] { display: none !important; }
-        .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+        .block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
         
-        /* 2. 強行隱藏自動冒出來的「數據試算欄」文字標題 */
-        [data-testid="stHeaderBlock"] h3, 
-        [data-testid="stMarkdownContainer"] h3 { 
-            display: none !important; 
-        }
-        
-        /* 3. 唯獨讓右邊的「圖面參考」標題顯示（覆蓋上面的隱藏設定） */
-        .show-title {
-            display: block !important;
+        /* 2. 徹底美化原本空白條的標題字體與行高 */
+        .title-left {
             font-family: "Microsoft JhengHei", sans-serif;
             font-size: 24px; 
             font-weight: bold; 
             color: #1a1a1a;
+            padding-top: 0px !important;
             padding-bottom: 12px !important;
+            line-height: 1.6 !important;
             border-bottom: 2px solid #eaeaea;
             margin-bottom: 20px !important;
         }
         
-        /* 4. 客製化精美計算機卡片外框 */
+        /* 3. 右邊的「圖面參考」標題保持對齊 */
+        .title-right {
+            font-family: "Microsoft JhengHei", sans-serif;
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #1a1a1a;
+            padding-top: 0px !important;
+            padding-bottom: 12px !important;
+            line-height: 1.6 !important;
+            border-bottom: 2px solid #eaeaea;
+            margin-bottom: 20px !important;
+        }
+        
+        /* 4. 客製化精美計算機卡片外框（移除了內部的標題） */
         .custom-card {
             font-family: "Microsoft JhengHei", sans-serif;
             padding: 24px;
@@ -77,14 +85,13 @@ def sort_parking_levels(level_list):
 # 進行左右雙欄配置
 col1, col2 = st.columns([1, 1.2])
 
-# --- 左側：高質感原生看屋計算機（標題已被完全隱藏，直接貼頂） ---
+# --- 左側：大挪移頂部計算機 ---
 with col1:
-    # 這裡的 st.markdown 標題會被上面的 CSS 直接蒸發隱藏，確保版面不留白
-    st.markdown("### 數據試算欄") 
+    # 💡 成功將「選屋找補計算機」移到了那個本來會留白的框框區！
+    st.markdown('<div class="title-left">🏡 選屋找補計算機</div>', unsafe_allow_html=True)
     
     with st.container():
         st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align:center; color:#222; margin-top:0; font-size:22px; font-weight:bold;'>選屋找補計算機</h2>", unsafe_allow_html=True)
         
         # --- 房屋下拉選單 ---
         st.markdown("<span style='color:#444; font-weight:bold; font-size:15px;'>選擇樓層：</span>", unsafe_allow_html=True)
@@ -128,10 +135,9 @@ with col1:
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 右側：自動圖面對照欄（使用特定 CSS 類別強制顯示） ---
+# --- 右側：自動圖面對照欄 ---
 with col2:
-    # 這裡使用 class="show-title" 繞過隱藏規則，確保它能漂亮現身
-    st.markdown('<div class="show-title">🗺️ 樓層與車位圖面參考</div>', unsafe_allow_html=True)
+    st.markdown('<div class="title-right">🗺️ 樓層與車位圖面參考</div>', unsafe_allow_html=True)
     
     # 1. 房屋圖面自動檢索
     st.markdown(f"#### 🏠 房屋：{sel_floor} 平面圖")
