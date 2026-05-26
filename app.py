@@ -173,4 +173,4 @@ html_content = f'''
 '''
 
 # 使用 Streamlit components 直接渲染原生 HTML/JS，並放大高度避免捲軸出現
-st.components.v1.html(html_content, height=680, scrolling=False)
+st.components.v1.html(html_content, height=850, scrolling=False)
