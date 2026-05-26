@@ -1,5 +1,7 @@
 import streamlit as st
+import pandas as pd
 import os
+import base64
 
 # 設定網頁為寬螢幕模式
 st.set_page_config(page_title="選屋找補對照系統", page_icon="🏡", layout="wide")
@@ -26,57 +28,27 @@ PERSONAL_VALUE = 29393269
 RATIO = 0.95
 
 # ==========================================
-# 🔍 核心美化：加入滑鼠懸停圖片放大鏡效果與排版
+# 🛠️ 頁面極簡美化排版
 # ==========================================
 st.markdown("""
     <style>
-        /* 1. 清除頂部黑條與內建空白 */
         [data-testid="stHeader"] { display: none !important; }
         .block-container { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
         
-        /* 2. 標題字體美化 */
         .title-left, .title-right {
             font-family: "Microsoft JhengHei", sans-serif;
-            font-size: 24px; 
-            font-weight: bold; 
-            color: #1a1a1a;
-            padding-bottom: 12px !important;
-            border-bottom: 2px solid #eaeaea;
+            font-size: 24px; font-weight: bold; color: #1a1a1a;
+            padding-bottom: 12px !important; border-bottom: 2px solid #eaeaea;
             margin-bottom: 20px !important;
         }
         
-        /* 3. 客製化計算機卡片外框 */
         .custom-card {
             font-family: "Microsoft JhengHei", sans-serif;
-            padding: 24px;
-            border: 1px solid #e1e4e8;
-            border-radius: 12px;
-            background: #ffffff;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            margin-top: 5px;
+            padding: 24px; border: 1px solid #e1e4e8; border-radius: 12px;
+            background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-top: 5px;
         }
         .sub-price { font-size: 0.92em; color: #666; text-align: right; margin-top: -8px; margin-bottom: 18px; }
         .price-val { color: #d9534f; font-weight: bold; font-size: 1.05em; }
-        
-        /* 4. 🎯 放大鏡核心效果：限制圖片容器，超出範圍就隱藏，避免放大時擠壓到旁邊排版 */
-        [data-testid="stImage"] {
-            overflow: hidden !important;
-            border-radius: 8px;
-            border: 1px solid #eaeaea;
-            transition: border-color 0.3s;
-        }
-        [data-testid="stImage"]:hover {
-            border-color: #0056b3; /* 滑鼠移過去時外框變藍色 */
-        }
-        
-        /* 5. 🎯 放大鏡動畫：當滑鼠移到圖片上時，平滑放大 1.6 倍 (可自由調整數值) */
-        [data-testid="stImage"] img {
-            transition: transform 0.4s ease !important;
-            cursor: zoom-in !important; /* 讓滑鼠游標變成放大鏡的形狀 */
-        }
-        [data-testid="stImage"] img:hover {
-            transform: scale(1.6) !important; /* 1.6 代表放大 160%，可以改為 1.8 或 2.0 */
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -87,7 +59,14 @@ def sort_floors(floor_list):
 def sort_parking_levels(level_list):
     return sorted(level_list, key=lambda x: int(x.upper().replace('B','')) if x.upper().replace('B','').isdigit() else 99)
 
-# 進行左右雙欄配置
+# 圖片轉 Base64 安全編碼函式（防止 Streamlit 隔離讀不到圖）
+def get_image_base64(path):
+    if os.path.exists(path):
+        with open(path, "rb") as image_file:
+            return f"data:image/png;base64,{base64.b64encode(image_file.read()).decode()}"
+    return ""
+
+# 左右配置排版
 col1, col2 = st.columns([1, 1.2])
 
 # --- 左側：計算機 ---
@@ -97,7 +76,7 @@ with col1:
     with st.container():
         st.markdown('<div class="custom-card">', unsafe_allow_html=True)
         
-        # --- 房屋下拉選單 ---
+        # 房屋選單
         st.markdown("<span style='color:#444; font-weight:bold; font-size:15px;'>選擇樓層：</span>", unsafe_allow_html=True)
         floors = sort_floors(list(house_dict.keys())) if has_data else []
         sel_floor = st.selectbox("floor_hidden", floors if floors else ["無資料"], label_visibility="collapsed", key="f_select")
@@ -109,7 +88,7 @@ with col1:
         h_price = house_dict[sel_floor][sel_unit] if sel_floor in house_dict and sel_unit in house_dict[sel_floor] else 0
         st.markdown(f'<div class="sub-price">房屋單價：<span class="price-val">{h_price:,}</span> 元</div>', unsafe_allow_html=True)
         
-        # --- 車位下拉選單 ---
+        # 車位選單
         st.markdown("<span style='color:#444; font-weight:bold; font-size:15px;'>選擇車位樓層：</span>", unsafe_allow_html=True)
         p_floors = sort_parking_levels(list(parking_dict.keys())) if has_data else []
         sel_p_floor = st.selectbox("p_floor_hidden", p_floors if p_floors else ["無資料"], label_visibility="collapsed", key="p_f_select")
@@ -121,11 +100,9 @@ with col1:
         p_price = parking_dict[sel_p_floor][sel_p_id] if sel_p_floor in parking_dict and sel_p_id in parking_dict[sel_p_floor] else 0
         st.markdown(f'<div class="sub-price">車位單價：<span class="price-val">{p_price:,}</span> 元</div>', unsafe_allow_html=True)
         
-        # 計算試算總金額
         total_price = h_price + p_price
         diff_price = round((total_price - PERSONAL_VALUE) * RATIO)
         
-        # 三色看板高質感重現
         st.markdown(f"""
             <div style='background: #eef7ff; padding: 14px; border-radius: 6px; text-align: center; font-size: 1.25em; font-weight: bold; color: #0056b3; border: 1px solid #bce8f1; margin-bottom: 12px;'>
                 總計金額：{total_price:,} 元
@@ -139,37 +116,78 @@ with col1:
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 右側：自動圖面對照欄 (內含滑鼠懸停放大鏡) ---
+# --- 右側：自動圖面對照欄 (導入世界級地圖檢視引擎 OpenSeadragon) ---
 with col2:
     st.markdown('<div class="title-right">🗺️ 樓層與車位圖面參考</div>', unsafe_allow_html=True)
     
-    # 1. 房屋圖面自動檢索
-    st.markdown(f"#### 🏠 房屋：{sel_floor} 平面圖")
+    # 準備房屋與車位圖片
     try:
         f_num = int(sel_floor.upper().replace('F',''))
-        if f_num == 3:
-            img_file = os.path.join('maps', 'floor_3.png')
-        elif 4 <= f_num <= 14:
-            img_file = os.path.join('maps', 'floor_4_14.png')
-        elif 15 <= f_num <= 24:
-            img_file = os.path.join('maps', 'floor_15_24.png')
-        else:
-            img_file = None
-            
-        if img_file and os.path.exists(img_file):
-            st.image(img_file, use_column_width=True)
-        else:
-            st.caption(f"💡 暫無此樓層圖檔")
+        h_img_path = os.path.join('maps', 'floor_3.png' if f_num == 3 else 'floor_4_14.png' if 4 <= f_num <= 14 else 'floor_15_24.png' if 15 <= f_num <= 24 else '')
     except:
-        st.caption("暫時無法解析樓層。")
-
-    st.markdown("<br><hr>", unsafe_allow_html=True)
-
-    # 2. 車位圖面自動檢索
-    st.markdown(f"#### 🚗 車位：{sel_p_floor} 平面圖")
-    p_img_file = os.path.join('maps', f"parking_{sel_p_floor}.png")
+        h_img_path = ""
+    p_img_path = os.path.join('maps', f"parking_{sel_p_floor}.png")
     
-    if os.path.exists(p_img_file):
-        st.image(p_img_file, use_column_width=True)
-    else:
-        st.caption(f"💡 暫無此車位圖檔")
+    # 將圖片壓縮為 Base64 碼傳入前端
+    h_b64 = get_image_base64(h_img_path)
+    p_b64 = get_image_base64(p_img_path)
+    
+    # 建構網頁級 Google 地圖式拖曳放大引擎
+    seadragon_html = f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <!-- 載入微軟開源的 OpenSeadragon 地圖引擎 -->
+        <script src="https://cloudflare.com"></script>
+        <style>
+            body {{ margin: 0; padding: 0; font-family: "Microsoft JhengHei", sans-serif; background-color: #f9f9f9; }}
+            .label {{ font-size: 16px; font-weight: bold; color: #333; margin: 10px 0 5px 0; }}
+            .viewer-box {{ width: 100%; height: 350px; background: #eaeaea; border: 1px solid #ccc; border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 15px; }}
+        </style>
+    </head>
+    <body>
+        <div class="label">🏠 房屋：{sel_floor} 平面圖 (可滑鼠按著拖曳移動 / 滾輪放大縮小)</div>
+        <div id="houseViewer" class="viewer-box"></div>
+        
+        <div class="label">🚗 車位：{sel_p_floor} 平面圖 (可滑鼠按著拖曳移動 / 滾輪放大縮小)</div>
+        <div id="parkingViewer" class="viewer-box"></div>
+
+        <script>
+            // 初始化房屋地圖檢視器
+            if ("{h_b64}" !== "") {{
+                OpenSeadragon({{
+                    id: "houseViewer",
+                    prefixUrl: "https://cloudflare.com",
+                    tileSources: {{ type: 'image', url: "{h_b64}" }},
+                    showNavigationControl: false, // 隱藏多餘按鈕，純滑鼠操作
+                    maxZoomLevel: 10,
+                    defaultZoomLevel: 1,
+                    visibilityRatio: 1.0,
+                    constrainDuringPan: true
+                }});
+            }} else {{
+                document.getElementById("houseViewer").innerHTML = "<div style='text-align:center; line-height:350px; color:#888;'>💡 暫無此樓層對應圖檔</div>";
+            }}
+
+            // 初始化車位地圖檢視器
+            if ("{p_b64}" !== "") {{
+                OpenSeadragon({{
+                    id: "parkingViewer",
+                    prefixUrl: "https://cloudflare.com",
+                    tileSources: {{ type: 'image', url: "{p_b64}" }},
+                    showNavigationControl: false,
+                    maxZoomLevel: 10,
+                    defaultZoomLevel: 1,
+                    visibilityRatio: 1.0,
+                    constrainDuringPan: true
+                }});
+            }} else {{
+                document.getElementById("parkingViewer").innerHTML = "<div style='text-align:center; line-height:350px; color:#888;'>💡 暫無此車位對應圖檔</div>";
+            }}
+        </script>
+    </body>
+    </html>
+    '''
+    # 輸出極高科技的拖曳放大組件
+    st.components.v1.html(seadragon_html, height=830, scrolling=False)
